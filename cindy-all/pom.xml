@@ -1,0 +1,63 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>tectonica</groupId>
+	<artifactId>cindy-all</artifactId>
+	<version>${version.cindy}</version>
+	<packaging>pom</packaging>
+
+	<modules>
+		<module>../cindy-commons</module>
+		<module>../cindy-server-h2</module>
+	</modules>
+
+	<properties>
+		<version.cindy>0.0.1-SNAPSHOT</version.cindy>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<version.java>1.7</version.java>
+	</properties>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.1</version>
+					<configuration>
+						<source>${version.java}</source>
+						<target>${version.java}</target>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>tectonica</groupId>
+				<artifactId>cindy-commons</artifactId>
+				<version>0.0.1-SNAPSHOT</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.fasterxml.jackson.module</groupId>
+				<artifactId>jackson-module-jaxb-annotations</artifactId>
+				<version>2.4.1</version>
+			</dependency>
+
+			<dependency>
+				<groupId>ch.qos.logback</groupId>
+				<artifactId>logback-classic</artifactId>
+				<version>1.1.2</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.h2database</groupId>
+				<artifactId>h2</artifactId>
+				<version>1.4.178</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+</project>
