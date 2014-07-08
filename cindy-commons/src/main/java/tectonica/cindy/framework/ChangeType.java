@@ -5,7 +5,7 @@ public enum ChangeType
 	CHANGE(1), //
 	DELETE(2), //
 	PURGE(3), // status assignable on to rows on the client-side only
-	UPDATE(4); // status assignable on to rows on the client-side only
+	REPLACE(4); // status assignable on to rows on the client-side only
 
 	final public byte code;
 

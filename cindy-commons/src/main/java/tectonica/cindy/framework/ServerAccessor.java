@@ -12,5 +12,5 @@ public interface ServerAccessor extends BaseAccessor
 	 */
 	public void setAssociation(String userId, String entityId, long entitySubId, boolean associate);
 
-	public List<SyncEntity> performSync(String userId, long syncStart, long syncEnd, List<SyncEntity> clientSEs);
+	public List<SyncEvent> performSync(String userId, long syncStart, long syncEnd, List<SyncEvent> clientSEs);
 }

@@ -4,7 +4,7 @@
 
 	<groupId>tectonica</groupId>
 	<artifactId>cindy-all</artifactId>
-	<version>${version.cindy}</version>
+	<version>0.0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<modules>
@@ -13,7 +13,6 @@
 	</modules>
 
 	<properties>
-		<version.cindy>0.0.1-SNAPSHOT</version.cindy>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<version.java>1.7</version.java>
 	</properties>
@@ -48,15 +47,22 @@
 			</dependency>
 
 			<dependency>
+				<groupId>com.h2database</groupId>
+				<artifactId>h2</artifactId>
+				<version>1.4.178</version>
+			</dependency>
+
+			<dependency>
 				<groupId>ch.qos.logback</groupId>
 				<artifactId>logback-classic</artifactId>
 				<version>1.1.2</version>
 			</dependency>
 
 			<dependency>
-				<groupId>com.h2database</groupId>
-				<artifactId>h2</artifactId>
-				<version>1.4.178</version>
+				<groupId>junit</groupId>
+				<artifactId>junit</artifactId>
+				<version>4.8.2</version>
+				<scope>test</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import tectonica.cindy.framework.ChangeType;
 import tectonica.cindy.framework.Entity;
 import tectonica.cindy.framework.ServerAccessor;
-import tectonica.cindy.framework.SyncEntity;
+import tectonica.cindy.framework.SyncEvent;
 import ch.qos.logback.classic.Logger;
 
 public class H2ServerAccessor extends SQLProvider implements ServerAccessor
@@ -43,8 +43,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private static final String SYNC_INIT = "CREATE TABLE SYNCDB (U VARCHAR2, K VARCHAR2, SK BIGINT, SUT BIGINT, SD TINYINT, PRIMARY KEY(U, K, SK))";
 	private static final String SYNC_ASSOC = "MERGE INTO SYNCDB KEY (U, K, SK) VALUES (?, ?, ?, ?, 0)";
 	private static final String SYNC_DISAS = "UPDATE SYNCDB SET SUT = ?, SD = 1 WHERE (U = ?) AND (K = ?) AND (SK = ?) AND (SD = 0)";
-
-	private static final String SYNC_RAW = "" + //
+	private static final String SYNC_SYNC = "" + //
 			"SELECT SYNCDB.K, SYNCDB.SK, UT, D, SUT, SD, T, V " + //
 			"FROM SYNCDB JOIN KVDB ON (SYNCDB.K = KVDB.K AND SYNCDB.SK = KVDB.SK) " + //
 			"WHERE (U = ?) AND (" //
@@ -225,19 +224,19 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	}
 
 	@Override
-	public List<SyncEntity> performSync(final String userId, final long syncStart, final long syncEnd, List<SyncEntity> clientSEs)
+	public List<SyncEvent> performSync(final String userId, final long syncStart, final long syncEnd, List<SyncEvent> clientSEs)
 	{
-		final Map<String, Map<Long, SyncEntity>> index = indexClientSEs(clientSEs);
+		final Map<String, Map<Long, SyncEvent>> index = indexClientSEs(clientSEs);
 
-		return transact(new ConnListener<List<SyncEntity>>()
+		return transact(new ConnListener<List<SyncEvent>>()
 		{
 			@Override
-			public List<SyncEntity> onConnection(Connection conn) throws SQLException
+			public List<SyncEvent> onConnection(Connection conn) throws SQLException
 			{
 //				System.err.println("SYNCING " + syncStart + " .. " + syncEnd);
 //				printTable(conn, "KVDB");
 //				printTable(conn, "SYNCDB");
-				PreparedStatement readStmt = conn.prepareStatement(SYNC_RAW);
+				PreparedStatement readStmt = conn.prepareStatement(SYNC_SYNC);
 				readStmt.setString(1, userId);
 				readStmt.setLong(2, syncStart);
 				readStmt.setLong(3, syncEnd);
@@ -245,27 +244,27 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 				readStmt.setLong(5, syncStart);
 				readStmt.setLong(6, syncEnd);
 				ResultSet rs = readStmt.executeQuery();
-				List<SyncEntity> list = new ArrayList<>();
+				List<SyncEvent> list = new ArrayList<>();
 				while (rs.next())
 				{
-					SyncEntity serverSE = extractServerSE(rs, syncStart, syncEnd);
+					SyncEvent serverSE = extractServerSE(rs, syncStart, syncEnd);
 					if (serverSE == null)
 						continue;
-					SyncEntity resolvedSE = checkConflict(serverSE, conn);
+					SyncEvent resolvedSE = checkConflict(serverSE, conn);
 					if (resolvedSE != serverSE) // TODO: either use equals, or have the user return a 'hasChanged' boolean
 						applySync(conn, resolvedSE, false);
 					list.add(serverSE);
 				}
 
 				// sync all the non-conflicted entities from the client into the server's db
-				for (Map<Long, SyncEntity> map : index.values())
-					for (SyncEntity clientSE : map.values())
+				for (Map<Long, SyncEvent> map : index.values())
+					for (SyncEvent clientSE : map.values())
 						applySync(conn, clientSE, true);
 
 				return list;
 			}
 
-			private SyncEntity extractServerSE(ResultSet rs, final long syncStart, final long syncEnd) throws SQLException
+			private SyncEvent extractServerSE(ResultSet rs, final long syncStart, final long syncEnd) throws SQLException
 			{
 				final String id = rs.getString(1);
 				final long subId = rs.getLong(2);
@@ -296,11 +295,11 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 					return null;
 				}
 
-				return sendDelete ? SyncEntity.create(id, subId, type, null, ChangeType.DELETE) : //
-						SyncEntity.create(id, subId, type, value, ChangeType.CHANGE);
+				return sendDelete ? SyncEvent.create(id, subId, type, null, ChangeType.DELETE) : //
+						SyncEvent.create(id, subId, type, value, ChangeType.CHANGE);
 			}
 
-			private void applySync(Connection conn, SyncEntity syncEntity, boolean isClientSE) throws SQLException
+			private void applySync(Connection conn, SyncEvent syncEntity, boolean isClientSE) throws SQLException
 			{
 				String id = syncEntity.id;
 				long subId = syncEntity.subId;
@@ -308,9 +307,9 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 				switch (syncEntity.changeType)
 				{
 					case CHANGE:
-					case UPDATE:
+					case REPLACE:
 						updateKV(conn, id, subId, syncEntity.type, syncEntity.value, syncEnd);
-						if (isClientSE && syncEntity.changeType != ChangeType.UPDATE)
+						if (isClientSE && syncEntity.changeType != ChangeType.REPLACE)
 							associate(conn, userId, id, subId, syncEnd); // for the case of client-initiated CREATE
 						break;
 
@@ -327,12 +326,12 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 				}
 			}
 
-			private SyncEntity checkConflict(SyncEntity serverSE, Connection conn) throws SQLException
+			private SyncEvent checkConflict(SyncEvent serverSE, Connection conn) throws SQLException
 			{
-				Map<Long, SyncEntity> map = index.get(serverSE.id);
+				Map<Long, SyncEvent> map = index.get(serverSE.id);
 				if (map != null)
 				{
-					SyncEntity clientSE = map.remove(serverSE.subId);
+					SyncEvent clientSE = map.remove(serverSE.subId);
 					if (clientSE != null)
 						return resolve(serverSE, clientSE);
 				}
@@ -346,7 +345,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			 * @param clientSE
 			 * @return
 			 */
-			private SyncEntity resolve(SyncEntity serverSE, SyncEntity clientSE)
+			private SyncEvent resolve(SyncEvent serverSE, SyncEvent clientSE)
 			{
 				LOG.warn("CONFLICT: " + clientSE + " -- vs -- " + serverSE);
 				// TODO: implement (fire an event)
@@ -369,14 +368,14 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 		});
 	}
 
-	private Map<String, Map<Long, SyncEntity>> indexClientSEs(List<SyncEntity> clientSEs)
+	private Map<String, Map<Long, SyncEvent>> indexClientSEs(List<SyncEvent> clientSEs)
 	{
-		Map<String, Map<Long, SyncEntity>> index = new HashMap<>();
+		Map<String, Map<Long, SyncEvent>> index = new HashMap<>();
 		if (clientSEs != null)
 		{
-			for (SyncEntity se : clientSEs)
+			for (SyncEvent se : clientSEs)
 			{
-				Map<Long, SyncEntity> map = index.get(se.id);
+				Map<Long, SyncEvent> map = index.get(se.id);
 				if (map == null)
 					index.put(se.id, map = new HashMap<>());
 				map.put(se.subId, se);

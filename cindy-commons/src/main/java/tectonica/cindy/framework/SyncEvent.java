@@ -1,6 +1,6 @@
 package tectonica.cindy.framework;
 
-public class SyncEntity
+public class SyncEvent
 {
 	public String id;
 	public long subId;
@@ -8,9 +8,9 @@ public class SyncEntity
 	public String value;
 	public ChangeType changeType;
 
-	public static SyncEntity create(String id, long subId, String type, String value, ChangeType changeType)
+	public static SyncEvent create(String id, long subId, String type, String value, ChangeType changeType)
 	{
-		SyncEntity se = new SyncEntity();
+		SyncEvent se = new SyncEvent();
 		se.id = id;
 		se.subId = subId;
 		se.type = type;
@@ -22,6 +22,6 @@ public class SyncEntity
 	@Override
 	public String toString()
 	{
-		return "SyncEntity [id=" + id + ", subId=" + subId + ", type=" + type + ", value=" + value + ", changeType=" + changeType + "]";
+		return "SyncEvent [id=" + id + ", subId=" + subId + ", type=" + type + ", value=" + value + ", changeType=" + changeType + "]";
 	}
 }

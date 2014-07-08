@@ -2,21 +2,46 @@ package tectonica.test.cindy;
 
 import java.util.List;
 
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import tectonica.cindy.framework.Entity;
 import tectonica.cindy.framework.ServerAccessor;
-import tectonica.cindy.framework.SyncEntity;
+import tectonica.cindy.framework.SyncEvent;
 import tectonica.cindy.impl.h2.H2ServerAccessor;
 import tectonica.test.cindy.model.Person;
+import tectonica.test.cindy.model.SyncResults;
 
-public class Tester
+public class TestH2
 {
 	private static ServerAccessor s;
 
-	public static void main(String[] args)
+	@BeforeClass
+	public static void setUpBeforeClass() throws Exception
+	{
+		s = new H2ServerAccessor();
+	}
+
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception
+	{}
+
+	@Before
+	public void setUp() throws Exception
+	{}
+
+	@After
+	public void tearDown() throws Exception
+	{}
+
+	@Test
+	public void test()
 	{
 		long syncStart = System.currentTimeMillis();
 
-		s = new H2ServerAccessor();
 		s.put(Person.create("a", Entity.NO_SUB_ID, "Name A", 10, 1.10));
 		s.setAssociation("user1", "a", Entity.NO_SUB_ID, true);
 		s.put(Person.create("b", 1L, "WRONG", 0, 0.0));
@@ -57,17 +82,17 @@ public class Tester
 		System.out.println("--------------------------------------------------------");
 	}
 
-	public static SyncResults sync(String userId, long syncStart, List<SyncEntity> clientSEs)
+	public SyncResults sync(String userId, long syncStart, List<SyncEvent> clientSEs)
 	{
 		long syncEnd = System.currentTimeMillis();
 		if (syncEnd == syncStart)
 			throw new RuntimeException("Illegal time range");
-		List<SyncEntity> syncEntities = s.performSync(userId, syncStart, syncEnd, clientSEs);
+		List<SyncEvent> syncEntities = s.performSync(userId, syncStart, syncEnd, clientSEs);
 		sleep(1);
 		return SyncResults.create(syncStart, syncEnd, syncEntities);
 	}
 
-	public static void sleep(int ms)
+	public void sleep(int ms)
 	{
 		try
 		{
