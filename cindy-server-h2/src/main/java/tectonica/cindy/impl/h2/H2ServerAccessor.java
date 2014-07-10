@@ -41,6 +41,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private static final String KV_UPDATE = "UPDATE KVDB SET T = ?, V = ?, UT = ? WHERE (K = ?) AND (SK = ?) AND (D = 0)";
 	private static final String KV_CHECK = "SELECT 1 FROM KVDB WHERE (K = ?) AND (SK = ?) AND (D = 0)";
 	private static final String KV_DELETE = "UPDATE KVDB SET UT = ?, D = 1 WHERE (K = ?) AND (SK = ?) AND (D = 0)";
+	private static final String KV_MAX = "SELECT MAX(SK) FROM KVDB WHERE (K = ?)";
 
 	// //////////////////////////////////////////////////////////////////////////////////////
 	//
@@ -93,56 +94,65 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private void updateKV(Connection conn, String id, long subId, String type, String value, long ts) throws SQLException
 	{
 //		System.err.println("updateKV " + ts);
-		PreparedStatement writeStmt = conn.prepareStatement(KV_MERGE);
-		writeStmt.setString(1, id);
-		writeStmt.setLong(2, subId);
-		writeStmt.setString(3, type);
-		writeStmt.setString(4, value);
-		writeStmt.setLong(5, ts);
-		writeStmt.executeUpdate();
+		try (PreparedStatement writeStmt = conn.prepareStatement(KV_MERGE))
+		{
+			writeStmt.setString(1, id);
+			writeStmt.setLong(2, subId);
+			writeStmt.setString(3, type);
+			writeStmt.setString(4, value);
+			writeStmt.setLong(5, ts);
+			writeStmt.executeUpdate();
+		}
+		finally
+		{
+		}
 	}
 
 	private void deleteKV(Connection conn, String id, long subId, long ts) throws SQLException
 	{
 //		System.err.println("deleteKV " + ts);
-		PreparedStatement writeStmt = conn.prepareStatement(KV_DELETE);
-		writeStmt.setLong(1, ts);
-		writeStmt.setString(2, id);
-		writeStmt.setLong(3, subId);
-		writeStmt.executeUpdate();
+		try (PreparedStatement writeStmt = conn.prepareStatement(KV_DELETE))
+		{
+			writeStmt.setLong(1, ts);
+			writeStmt.setString(2, id);
+			writeStmt.setLong(3, subId);
+			writeStmt.executeUpdate();
+		}
+		finally
+		{
+		}
 	}
-
-//	private void associateSYNC(Connection conn, String userId, String id, long subId, long ts, ChangeType changeType) throws SQLException
-//	{
-//		PreparedStatement writeStmt = conn.prepareStatement(SYNC_WRITE);
-//		writeStmt.setString(1, userId);
-//		writeStmt.setString(2, id);
-//		writeStmt.setLong(3, subId);
-//		writeStmt.setLong(4, ts);
-//		writeStmt.setByte(5, changeType.code);
-//		writeStmt.executeUpdate();
-//	}
 
 	private void associate(Connection conn, String userId, String id, long subId, long ts) throws SQLException
 	{
 //		System.err.println("assocSYNC " + ts);
-		PreparedStatement writeStmt = conn.prepareStatement(SYNC_ASSOC);
-		writeStmt.setString(1, userId);
-		writeStmt.setString(2, id);
-		writeStmt.setLong(3, subId);
-		writeStmt.setLong(4, ts);
-		writeStmt.executeUpdate();
+		try (PreparedStatement writeStmt = conn.prepareStatement(SYNC_ASSOC))
+		{
+			writeStmt.setString(1, userId);
+			writeStmt.setString(2, id);
+			writeStmt.setLong(3, subId);
+			writeStmt.setLong(4, ts);
+			writeStmt.executeUpdate();
+		}
+		finally
+		{
+		}
 	}
 
 	private void disassociate(Connection conn, String userId, String id, long subId, long ts) throws SQLException
 	{
 //		System.err.println("disassocSYNC " + ts);
-		PreparedStatement writeStmt = conn.prepareStatement(SYNC_DISAS);
-		writeStmt.setLong(1, ts);
-		writeStmt.setString(2, userId);
-		writeStmt.setString(3, id);
-		writeStmt.setLong(4, subId);
-		writeStmt.executeUpdate();
+		try (PreparedStatement writeStmt = conn.prepareStatement(SYNC_DISAS))
+		{
+			writeStmt.setLong(1, ts);
+			writeStmt.setString(2, userId);
+			writeStmt.setString(3, id);
+			writeStmt.setLong(4, subId);
+			writeStmt.executeUpdate();
+		}
+		finally
+		{
+		}
 	}
 
 	@Override
@@ -153,15 +163,20 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public List<T> onConnection(Connection conn) throws SQLException
 			{
-				PreparedStatement readStmt = conn.prepareStatement(KV_READ_MULTIPLE);
-				readStmt.setString(1, id);
-				readStmt.setLong(2, subIdFrom);
-				readStmt.setLong(3, subIdTo);
-				ResultSet rs = readStmt.executeQuery();
-				List<T> list = new ArrayList<>();
-				while (rs.next())
-					list.add(strToEntity(rs.getString(1), clz));
-				return list;
+				try (PreparedStatement readStmt = conn.prepareStatement(KV_READ_MULTIPLE))
+				{
+					readStmt.setString(1, id);
+					readStmt.setLong(2, subIdFrom);
+					readStmt.setLong(3, subIdTo);
+					ResultSet rs = readStmt.executeQuery();
+					List<T> list = new ArrayList<>();
+					while (rs.next())
+						list.add(strToEntity(rs.getString(1), clz));
+					return list;
+				}
+				finally
+				{
+				}
 			}
 		});
 	}
@@ -188,14 +203,19 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public Boolean onConnection(Connection conn) throws SQLException
 			{
-				PreparedStatement writeStmt = conn.prepareStatement(KV_UPDATE);
-				writeStmt.setString(1, entity.getType());
-				writeStmt.setString(2, entityToStr(entity));
-				writeStmt.setLong(3, System.currentTimeMillis());
-				writeStmt.setString(4, entity.getId());
-				writeStmt.setLong(5, entity.getSubId());
-				int count = writeStmt.executeUpdate();
-				return Boolean.valueOf(count > 0);
+				try (PreparedStatement writeStmt = conn.prepareStatement(KV_UPDATE))
+				{
+					writeStmt.setString(1, entity.getType());
+					writeStmt.setString(2, entityToStr(entity));
+					writeStmt.setLong(3, System.currentTimeMillis());
+					writeStmt.setString(4, entity.getId());
+					writeStmt.setLong(5, entity.getSubId());
+					int count = writeStmt.executeUpdate();
+					return Boolean.valueOf(count > 0);
+				}
+				finally
+				{
+				}
 			}
 		});
 	}
@@ -208,18 +228,23 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public Boolean onConnection(Connection conn) throws SQLException
 			{
-				PreparedStatement readStmt = conn.prepareStatement(KV_READ_SINGLE);
-				readStmt.setString(1, partialEntity.getId());
-				readStmt.setLong(2, partialEntity.getSubId());
-				ResultSet rs = readStmt.executeQuery();
-				if (!rs.next())
-					return Boolean.FALSE;
+				try (PreparedStatement readStmt = conn.prepareStatement(KV_READ_SINGLE))
+				{
+					readStmt.setString(1, partialEntity.getId());
+					readStmt.setLong(2, partialEntity.getSubId());
+					ResultSet rs = readStmt.executeQuery();
+					if (!rs.next())
+						return Boolean.FALSE;
 
-				// if the following casting fails, it means that patching was tried on entity that doesn't support patching
-				PatchableEntity entity = (PatchableEntity) strToEntity(rs.getString(1), clz);
-				entity.patchWith(partialEntity);
-				updateKV(conn, entity.getId(), entity.getSubId(), entity.getType(), entityToStr(entity), System.currentTimeMillis());
-				return Boolean.TRUE;
+					// if the following casting fails, it means that patching was tried on entity that doesn't support patching
+					PatchableEntity entity = (PatchableEntity) strToEntity(rs.getString(1), clz);
+					entity.patchWith(partialEntity);
+					updateKV(conn, entity.getId(), entity.getSubId(), entity.getType(), entityToStr(entity), System.currentTimeMillis());
+					return Boolean.TRUE;
+				}
+				finally
+				{
+				}
 			}
 		});
 	}
@@ -232,11 +257,16 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public Boolean onConnection(Connection conn) throws SQLException
 			{
-				PreparedStatement readStmt = conn.prepareStatement(KV_CHECK);
-				readStmt.setString(1, id);
-				readStmt.setLong(2, subId);
-				ResultSet rs = readStmt.executeQuery();
-				return (rs.next());
+				try (PreparedStatement readStmt = conn.prepareStatement(KV_CHECK))
+				{
+					readStmt.setString(1, id);
+					readStmt.setLong(2, subId);
+					ResultSet rs = readStmt.executeQuery();
+					return (rs.next());
+				}
+				finally
+				{
+				}
 			}
 		});
 	}
@@ -251,6 +281,29 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			{
 				deleteKV(conn, id, subId, System.currentTimeMillis());
 				return null;
+			}
+		});
+	}
+
+	@Override
+	public long getMaxSubId(final String id)
+	{
+		return execute(new ConnListener<Long>()
+		{
+			@Override
+			public Long onConnection(Connection conn) throws SQLException
+			{
+				try (PreparedStatement readStmt = conn.prepareStatement(KV_MAX))
+				{
+					readStmt.setString(1, id);
+					ResultSet rs = readStmt.executeQuery();
+					if (rs.next())
+						return rs.getLong(1);
+					return 0L;
+				}
+				finally
+				{
+				}
 			}
 		});
 	}
@@ -301,32 +354,37 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 //				System.err.println("SYNCING " + syncStart + " .. " + syncEnd);
 //				printTable(conn, "KVDB");
 //				printTable(conn, "SYNCDB");
-				PreparedStatement readStmt = conn.prepareStatement(SYNC_GET_CHANGES);
-				readStmt.setString(1, userId);
-				readStmt.setLong(2, syncStart);
-				readStmt.setLong(3, syncEnd);
-				readStmt.setLong(4, syncStart);
-				readStmt.setLong(5, syncStart);
-				readStmt.setLong(6, syncEnd);
-				ResultSet rs = readStmt.executeQuery();
-				List<ServerSyncEvent> list = new ArrayList<>();
-				while (rs.next())
+				try (PreparedStatement readStmt = conn.prepareStatement(SYNC_GET_CHANGES))
 				{
-					ServerSyncEvent serverSE = extractServerSE(rs, syncStart, syncEnd);
-					if (serverSE == null)
-						continue;
-					ServerSyncEvent resolvedSE = checkConflict(serverSE, conn);
-					if (resolvedSE != serverSE) // TODO: either use equals, or have the user return a 'hasChanged' boolean
-						applySync(conn, resolvedSE);
-					list.add(serverSE);
+					readStmt.setString(1, userId);
+					readStmt.setLong(2, syncStart);
+					readStmt.setLong(3, syncEnd);
+					readStmt.setLong(4, syncStart);
+					readStmt.setLong(5, syncStart);
+					readStmt.setLong(6, syncEnd);
+					ResultSet rs = readStmt.executeQuery();
+					List<ServerSyncEvent> list = new ArrayList<>();
+					while (rs.next())
+					{
+						ServerSyncEvent serverSE = extractServerSE(rs, syncStart, syncEnd);
+						if (serverSE == null)
+							continue;
+						ServerSyncEvent resolvedSE = checkConflict(serverSE, conn);
+						if (resolvedSE != serverSE) // TODO: either use equals, or have the user return a 'hasChanged' boolean
+							applySync(conn, resolvedSE);
+						list.add(serverSE);
+					}
+
+					// sync all the non-conflicted entities from the client into the server's db
+					for (Map<Long, ClientSyncEvent> map : index.values())
+						for (ClientSyncEvent clientSE : map.values())
+							applySync(conn, clientSE);
+
+					return list;
 				}
-
-				// sync all the non-conflicted entities from the client into the server's db
-				for (Map<Long, ClientSyncEvent> map : index.values())
-					for (ClientSyncEvent clientSE : map.values())
-						applySync(conn, clientSE);
-
-				return list;
+				finally
+				{
+				}
 			}
 
 			private ServerSyncEvent extractServerSE(ResultSet rs, final long syncStart, final long syncEnd) throws SQLException

@@ -15,4 +15,6 @@ public interface BaseAccessor
 	public boolean exists(String id, long subId);
 
 	public void delete(String id, long subId);
+
+	public long getMaxSubId(String id);
 }
