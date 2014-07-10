@@ -30,7 +30,9 @@ public class TestH2
 
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception
-	{}
+	{
+		s.cleanup();
+	}
 
 	@Before
 	public void setUp() throws Exception
@@ -69,6 +71,7 @@ public class TestH2
 		Assert.assertEquals(1, s.get("a", 0, 0, Person.class).size());
 		Assert.assertEquals(0, s.get("c", 0, 0, Person.class).size());
 		Assert.assertEquals(0, s.get("d", 0, 0, Person.class).size());
+		Assert.assertFalse(s.exists("d", 0));
 
 		// patch b-1
 		Person subPerson = Person.create("b", 1, "Name B1", null, null);
@@ -115,7 +118,7 @@ public class TestH2
 		long syncEnd = System.currentTimeMillis();
 		if (syncEnd == syncStart)
 			throw new RuntimeException("Illegal time range");
-		List<ServerSyncEvent> syncEntities = s.performSync(userId, syncStart, syncEnd, clientSEs);
+		List<ServerSyncEvent> syncEntities = s.sync(userId, syncStart, syncEnd, clientSEs);
 		sleep(1);
 		return SyncResults.create(syncStart, syncEnd, syncEntities);
 	}

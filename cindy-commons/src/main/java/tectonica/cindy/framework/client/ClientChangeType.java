@@ -2,10 +2,11 @@ package tectonica.cindy.framework.client;
 
 public enum ClientChangeType
 {
+	// NOTE: use negative values for non-existing rows. 0 is not allowed (means UNCHANCHED)
 	CHANGE(1), //
-	DELETE(2), //
-	PURGE(3), //
-	REPLACE(4);
+	REPLACE(2), //
+	DELETE(-1), //
+	PURGE(-2);
 
 	final public byte code;
 

@@ -3,7 +3,7 @@ package tectonica.cindy.framework.server;
 public enum ServerChangeType
 {
 	CHANGE(1), //
-	DELETE(2); //
+	DELETE(-1);
 
 	final public byte code;
 

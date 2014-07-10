@@ -23,7 +23,7 @@ import ch.qos.logback.classic.Logger;
 
 public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 {
-	private static final String CONN_STR = "jdbc:h2:mem:test";
+	private static final String CONN_STR = "jdbc:h2:mem:server";
 	private static final String CONN_USERNAME = "sa";
 	private static final String CONN_PASSWORD = "sa";
 
@@ -38,9 +38,10 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private static final String KV_READ_SINGLE = "SELECT V FROM KVDB WHERE (K = ?) AND (SK = ?) AND (D = 0)";
 	private static final String KV_READ_MULTIPLE = "SELECT V FROM KVDB WHERE (K = ?) AND (SK BETWEEN ? AND ?) AND (D = 0)";
 	private static final String KV_MERGE = "MERGE INTO KVDB KEY (K, SK) VALUES (?, ?, ?, ?, ?, 0)";
-	private static final String KV_UPDATE = "UPDATE KVDB SET T = ?, V = ?, UT = ? WHERE (K = ?) AND (SK = ?) AND (D = 0)";
+	private static final String KV_REPLACE = "UPDATE KVDB SET T = ?, V = ?, UT = ? WHERE (K = ?) AND (SK = ?) AND (D = 0)";
 	private static final String KV_CHECK = "SELECT 1 FROM KVDB WHERE (K = ?) AND (SK = ?) AND (D = 0)";
 	private static final String KV_DELETE = "UPDATE KVDB SET UT = ?, D = 1 WHERE (K = ?) AND (SK = ?) AND (D = 0)";
+	private static final String KV_DELETE_ALL = "UPDATE KVDB SET UT = ?, D = 1 WHERE (K = ?) AND (D = 0)";
 	private static final String KV_MAX = "SELECT MAX(SK) FROM KVDB WHERE (K = ?)";
 
 	// //////////////////////////////////////////////////////////////////////////////////////
@@ -86,12 +87,13 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 		LOG.info("Done " + msg);
 	}
 
-	public void destruct()
+	@Override
+	public void cleanup()
 	{
 		connPool.dispose();
 	}
 
-	private void updateKV(Connection conn, String id, long subId, String type, String value, long ts) throws SQLException
+	private void mergeKV(Connection conn, String id, long subId, String type, String value, long ts) throws SQLException
 	{
 //		System.err.println("updateKV " + ts);
 		try (PreparedStatement writeStmt = conn.prepareStatement(KV_MERGE))
@@ -108,15 +110,35 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 		}
 	}
 
-	private void deleteKV(Connection conn, String id, long subId, long ts) throws SQLException
+	private <T extends Entity> boolean replaceKV(Connection conn, T entity) throws SQLException
+	{
+		try (PreparedStatement writeStmt = conn.prepareStatement(KV_REPLACE))
+		{
+			writeStmt.setString(1, entity.getType());
+			writeStmt.setString(2, entityToStr(entity));
+			writeStmt.setLong(3, System.currentTimeMillis());
+			writeStmt.setString(4, entity.getId());
+			writeStmt.setLong(5, entity.getSubId());
+			int count = writeStmt.executeUpdate();
+			return (count > 0);
+		}
+		finally
+		{
+		}
+	}
+
+	private int deleteKV(Connection conn, String id, Long subId, long ts) throws SQLException
 	{
 //		System.err.println("deleteKV " + ts);
-		try (PreparedStatement writeStmt = conn.prepareStatement(KV_DELETE))
+		String stmt = (subId == null) ? KV_DELETE_ALL : KV_DELETE;
+		try (PreparedStatement writeStmt = conn.prepareStatement(stmt))
 		{
 			writeStmt.setLong(1, ts);
 			writeStmt.setString(2, id);
-			writeStmt.setLong(3, subId);
-			writeStmt.executeUpdate();
+			if (subId != null)
+				writeStmt.setLong(3, subId);
+			int count = writeStmt.executeUpdate();
+			return count;
 		}
 		finally
 		{
@@ -189,7 +211,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public Void onConnection(Connection conn) throws SQLException
 			{
-				updateKV(conn, entity.getId(), entity.getSubId(), entity.getType(), entityToStr(entity), System.currentTimeMillis());
+				mergeKV(conn, entity.getId(), entity.getSubId(), entity.getType(), entityToStr(entity), System.currentTimeMillis());
 				return null;
 			}
 		});
@@ -203,19 +225,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public Boolean onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement writeStmt = conn.prepareStatement(KV_UPDATE))
-				{
-					writeStmt.setString(1, entity.getType());
-					writeStmt.setString(2, entityToStr(entity));
-					writeStmt.setLong(3, System.currentTimeMillis());
-					writeStmt.setString(4, entity.getId());
-					writeStmt.setLong(5, entity.getSubId());
-					int count = writeStmt.executeUpdate();
-					return Boolean.valueOf(count > 0);
-				}
-				finally
-				{
-				}
+				return Boolean.valueOf(replaceKV(conn, entity));
 			}
 		});
 	}
@@ -239,8 +249,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 					// if the following casting fails, it means that patching was tried on entity that doesn't support patching
 					PatchableEntity entity = (PatchableEntity) strToEntity(rs.getString(1), clz);
 					entity.patchWith(partialEntity);
-					updateKV(conn, entity.getId(), entity.getSubId(), entity.getType(), entityToStr(entity), System.currentTimeMillis());
-					return Boolean.TRUE;
+					return Boolean.valueOf(replaceKV(conn, entity)); // theoretically should always be TRUE
 				}
 				finally
 				{
@@ -272,15 +281,27 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	}
 
 	@Override
-	public void delete(final String id, final long subId)
+	public int delete(final String id, final long subId)
 	{
-		execute(new ConnListener<Void>()
+		return execute(new ConnListener<Integer>()
 		{
 			@Override
-			public Void onConnection(Connection conn) throws SQLException
+			public Integer onConnection(Connection conn) throws SQLException
 			{
-				deleteKV(conn, id, subId, System.currentTimeMillis());
-				return null;
+				return Integer.valueOf(deleteKV(conn, id, subId, System.currentTimeMillis()));
+			}
+		});
+	}
+
+	@Override
+	public int delete(final String id)
+	{
+		return execute(new ConnListener<Integer>()
+		{
+			@Override
+			public Integer onConnection(Connection conn) throws SQLException
+			{
+				return Integer.valueOf(deleteKV(conn, id, null, System.currentTimeMillis()));
 			}
 		});
 	}
@@ -342,7 +363,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	}
 
 	@Override
-	public List<ServerSyncEvent> performSync(final String userId, final long syncStart, final long syncEnd, List<ClientSyncEvent> clientSEs)
+	public List<ServerSyncEvent> sync(final String userId, final long syncStart, final long syncEnd, List<ClientSyncEvent> clientSEs)
 	{
 		final Map<String, Map<Long, ClientSyncEvent>> index = indexClientSEs(clientSEs);
 
@@ -430,7 +451,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 				switch (syncEntity.changeType)
 				{
 					case CHANGE:
-						updateKV(conn, id, subId, syncEntity.type, syncEntity.value, syncEnd);
+						mergeKV(conn, id, subId, syncEntity.type, syncEntity.value, syncEnd);
 						break;
 
 					case DELETE:
@@ -447,11 +468,12 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 				switch (syncEntity.changeType)
 				{
 					case CHANGE:
+						// TODO: check if not already associated at the KEY value!
 						associate(conn, userId, id, subId, syncEnd); // for the case of client-initiated CREATE
 						// no break
 
 					case REPLACE:
-						updateKV(conn, id, subId, syncEntity.type, syncEntity.value, syncEnd);
+						mergeKV(conn, id, subId, syncEntity.type, syncEntity.value, syncEnd);
 						break;
 
 					case DELETE:
