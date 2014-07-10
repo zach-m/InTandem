@@ -8,6 +8,10 @@ public interface BaseAccessor
 
 	public <T extends Entity> void put(T entity);
 
+	public <T extends Entity> boolean replace(T entity);
+
+	public <T extends Entity> boolean patch(T partialEntity, Class<T> clz);
+
 	public boolean exists(String id, long subId);
 
 	public void delete(String id, long subId);

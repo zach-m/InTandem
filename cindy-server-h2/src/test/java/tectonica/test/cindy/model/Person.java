@@ -3,17 +3,18 @@ package tectonica.test.cindy.model;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import tectonica.cindy.framework.Entity;
+import tectonica.cindy.framework.PatchableEntity;
 
 @XmlRootElement
-public class Person implements Entity
+public class Person implements PatchableEntity
 {
 	public String id;
 	public long subId;
 	public String name;
-	public int age;
-	public double height;
+	public Integer age;
+	public Double height;
 
-	public static Person create(String id, long subId, String name, int age, double height)
+	public static Person create(String id, long subId, String name, Integer age, Double height)
 	{
 		Person person = new Person();
 		person.id = id;
@@ -46,5 +47,17 @@ public class Person implements Entity
 	public String getType()
 	{
 		return "person";
+	}
+
+	@Override
+	public void patchWith(Entity partialEntity)
+	{
+		Person person = (Person) partialEntity;
+		if (person.name != null)
+			name = person.name;
+		if (person.age != null)
+			age = person.age;
+		if (person.height != null)
+			height = person.height;
 	}
 }

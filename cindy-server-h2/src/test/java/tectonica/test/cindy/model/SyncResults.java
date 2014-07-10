@@ -4,21 +4,21 @@ import java.util.List;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import tectonica.cindy.framework.SyncEvent;
+import tectonica.cindy.framework.server.ServerSyncEvent;
 
 @XmlRootElement
 public class SyncResults
 {
 	public long syncStart;
 	public long syncEnd;
-	public List<SyncEvent> syncEntities;
+	public List<ServerSyncEvent> events;
 
-	public static SyncResults create(long lastSyncTime, long newSyncTime, List<SyncEvent> syncEntities)
+	public static SyncResults create(long lastSyncTime, long newSyncTime, List<ServerSyncEvent> syncEntities)
 	{
 		SyncResults s = new SyncResults();
 		s.syncStart = lastSyncTime;
 		s.syncEnd = newSyncTime;
-		s.syncEntities = syncEntities;
+		s.events = syncEntities;
 		return s;
 	}
 }

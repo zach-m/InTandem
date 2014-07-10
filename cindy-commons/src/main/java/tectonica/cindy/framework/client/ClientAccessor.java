@@ -1,8 +1,8 @@
-package tectonica.cindy.framework;
+package tectonica.cindy.framework.client;
+
+import tectonica.cindy.framework.BaseAccessor;
 
 public interface ClientAccessor extends BaseAccessor
 {
-	public <T extends Entity> void replace(T entity);
-
 	public void purge(String id, long subId);
 }
