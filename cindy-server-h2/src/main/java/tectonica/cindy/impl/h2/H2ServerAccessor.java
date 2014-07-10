@@ -27,6 +27,8 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private static final String CONN_USERNAME = "sa";
 	private static final String CONN_PASSWORD = "sa";
 
+	private static final long ALL_SUBS = -999999;
+
 	// //////////////////////////////////////////////////////////////////////////////////////
 	//
 	// Key-Value Modeling ("KV")
@@ -50,7 +52,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private static final String SYNC_DISAS = "UPDATE SYNCDB SET SUT = ?, SD = 1 WHERE (U = ?) AND (K = ?) AND (SK = ?) AND (SD = 0)";
 	private static final String SYNC_GET_CHANGES = "" + //
 			"SELECT SYNCDB.K, SYNCDB.SK, UT, D, SUT, SD, T, V " + //
-			"FROM SYNCDB JOIN KVDB ON (SYNCDB.K = KVDB.K AND SYNCDB.SK = KVDB.SK) " + //
+			"FROM SYNCDB JOIN KVDB ON (SYNCDB.K = KVDB.K AND (SYNCDB.SK = KVDB.SK OR SYNCDB.SK = " + ALL_SUBS + ")) " + //
 			"WHERE (U = ?) AND (" + //
 			"(SUT > ? AND SUT <= ?) OR " + //
 			"((SUT <= ?) AND (UT > ? AND UT <= ?))" + //
@@ -263,7 +265,11 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 		return JSON.toJson(entity);
 	}
 
-	// TODO: support association with an entire entityId (i.e. all of its subIds)
+	@Override
+	public void setAssociation(String userId, String entityId, boolean associate)
+	{
+		setAssociation(userId, entityId, ALL_SUBS, associate);
+	}
 
 	@Override
 	public void setAssociation(final String userId, final String entityId, final long entitySubId, final boolean associate)

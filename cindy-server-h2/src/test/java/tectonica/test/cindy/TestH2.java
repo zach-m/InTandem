@@ -44,7 +44,7 @@ public class TestH2
 	public void test()
 	{
 		s.put(Person.create("a", 0, "Name A", 10, 1.10));
-		s.setAssociation("user1", "a", 0, true);
+		s.setAssociation("user1", "a", true); // all-subkeys association
 
 		s.put(Person.create("b", 1, "Wrong", 0, 0.0)); // putting a wrong name under b-1
 		s.setAssociation("user1", "b", 1, true);
@@ -66,6 +66,7 @@ public class TestH2
 
 		// test that the basics work
 		Assert.assertEquals("Name C", s.get("c", 5L, 5L, Person.class).get(0).name);
+		Assert.assertEquals(1, s.get("a", 0, 0, Person.class).size());
 		Assert.assertEquals(0, s.get("c", 0, 0, Person.class).size());
 		Assert.assertEquals(0, s.get("d", 0, 0, Person.class).size());
 
@@ -87,7 +88,7 @@ public class TestH2
 		SyncResults sync = sync("user1", syncStart, null);
 		Assert.assertEquals(2, sync.events.size()); // only a0 and b1 are associated with the user
 
-		s.setAssociation("user1", "a", 0, false);
+		s.setAssociation("user1", "a", false);
 		s.setAssociation("user1", "c", 5, true);
 		s.delete("c", 5);
 
@@ -101,11 +102,11 @@ public class TestH2
 		SyncResults sync2 = sync("user1", syncStart, null);
 		Assert.assertEquals(sync.events, sync2.events);
 
-		/// run the next sync
+		// / run the next sync
 		syncStart = sync.syncEnd;
 		sync = sync("user1", syncStart, null);
 		Assert.assertEquals(0, sync.events.size()); // expected empty as we made no further changes
-		
+
 		System.out.println("--------------------------------------------------------");
 	}
 
