@@ -10,10 +10,13 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import tectonica.intandem.framework.client.ClientAccessor;
+import tectonica.intandem.framework.client.ClientAccessor.SyncResult;
 import tectonica.intandem.framework.client.ClientSyncEvent;
 import tectonica.intandem.framework.server.ServerAccessor;
 import tectonica.intandem.framework.server.ServerChangeType;
 import tectonica.intandem.framework.server.ServerSyncEvent;
+import tectonica.intandem.impl.h2.H2ClientAccessor;
 import tectonica.intandem.impl.h2.H2ServerAccessor;
 import tectonica.test.intandem.model.Person;
 import tectonica.test.intandem.model.SyncResults;
@@ -21,16 +24,19 @@ import tectonica.test.intandem.model.SyncResults;
 public class TestH2
 {
 	private static ServerAccessor s;
+	private static ClientAccessor c;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception
 	{
 		s = new H2ServerAccessor();
+		c = new H2ClientAccessor();
 	}
 
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception
 	{
+		c.cleanup();
 		s.cleanup();
 	}
 
@@ -81,14 +87,14 @@ public class TestH2
 		Assert.assertEquals("Name B1", latestB1.name);
 		Assert.assertEquals(20, latestB1.age.intValue());
 
-		System.out.println("Running simple sync tests..");
+		System.out.println("Running simple server-sync tests..");
 
 		// sync non-existing user
-		Assert.assertEquals(0, sync("NOBODY", 0L, null).events.size()); // nobody is associated with this user
+		Assert.assertEquals(0, serverSync("NOBODY", 0L, null).events.size()); // nobody is associated with this user
 
 		// sync our user
 		long syncStart = 0L; // since the beginning of time
-		SyncResults sync = sync("user1", syncStart, null);
+		SyncResults sync = serverSync("user1", syncStart, null);
 		Assert.assertEquals(2, sync.events.size()); // only a0 and b1 are associated with the user
 
 		s.setAssociation("user1", "a", false);
@@ -96,31 +102,46 @@ public class TestH2
 		s.delete("c", 5);
 
 		syncStart = sync.syncEnd;
-		sync = sync("user1", syncStart, null);
+		sync = serverSync("user1", syncStart, null);
+//		System.out.println(sync.events);
 		Assert.assertEquals(2, sync.events.size()); // a0 and c5 have been deleted for this user
 		Assert.assertTrue(sync.events.get(0).changeType == ServerChangeType.DELETE);
 		Assert.assertTrue(sync.events.get(1).changeType == ServerChangeType.DELETE);
 
 		// re-run the same sync
-		SyncResults sync2 = sync("user1", syncStart, null);
+		SyncResults sync2 = serverSync("user1", syncStart, null);
 		Assert.assertEquals(sync.events, sync2.events);
 
 		// / run the next sync
 		syncStart = sync.syncEnd;
-		sync = sync("user1", syncStart, null);
+		sync = serverSync("user1", syncStart, null);
 		Assert.assertEquals(0, sync.events.size()); // expected empty as we made no further changes
+
+		System.out.println("Running simple client-sync tests..");
+
+		clientSync(0L);
+		Person b1 = c.get("b", 1, 1, Person.class).get(0);
+		Assert.assertEquals(b1, latestB1);
 
 		System.out.println("--------------------------------------------------------");
 	}
 
-	public SyncResults sync(String userId, long syncStart, List<ClientSyncEvent> clientSEs)
+	public SyncResults serverSync(String userId, long syncStart, List<ClientSyncEvent> clientSEs)
 	{
+//		sleep(2); // TODO: this doesn't work!!
 		long syncEnd = System.currentTimeMillis();
-		if (syncEnd == syncStart)
-			throw new RuntimeException("Illegal time range");
+//		System.err.println("syncStart=" + syncStart + ", syncEnd=" + syncEnd);
+//		if (syncStart >= syncEnd)
+//			throw new RuntimeException("syncStart=" + syncStart + ", syncEnd=" + syncEnd);
 		List<ServerSyncEvent> syncEntities = s.sync(userId, syncStart, syncEnd, clientSEs);
 		sleep(1);
 		return SyncResults.create(syncStart, syncEnd, syncEntities);
+	}
+
+	public SyncResult clientSync(long syncStart)
+	{
+		sleep(1);
+		return c.sync(s, "user1", syncStart);
 	}
 
 	public void sleep(int ms)

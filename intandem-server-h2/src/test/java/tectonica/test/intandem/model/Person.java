@@ -32,6 +32,49 @@ public class Person implements PatchableEntity
 	}
 
 	@Override
+	public boolean equals(Object obj)
+	{
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Person other = (Person) obj;
+		if (age == null)
+		{
+			if (other.age != null)
+				return false;
+		}
+		else if (!age.equals(other.age))
+			return false;
+		if (height == null)
+		{
+			if (other.height != null)
+				return false;
+		}
+		else if (!height.equals(other.height))
+			return false;
+		if (id == null)
+		{
+			if (other.id != null)
+				return false;
+		}
+		else if (!id.equals(other.id))
+			return false;
+		if (name == null)
+		{
+			if (other.name != null)
+				return false;
+		}
+		else if (!name.equals(other.name))
+			return false;
+		if (subId != other.subId)
+			return false;
+		return true;
+	}
+
+	@Override
 	public String getId()
 	{
 		return id;

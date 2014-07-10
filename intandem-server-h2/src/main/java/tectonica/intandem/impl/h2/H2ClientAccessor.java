@@ -16,6 +16,7 @@ import tectonica.intandem.framework.client.ClientAccessor;
 import tectonica.intandem.framework.client.ClientChangeType;
 import tectonica.intandem.framework.client.ClientSyncEvent;
 import tectonica.intandem.framework.server.ServerAccessor;
+import tectonica.intandem.framework.server.ServerSyncEvent;
 import ch.qos.logback.classic.Logger;
 
 public class H2ClientAccessor extends SQLProvider implements ClientAccessor
@@ -322,8 +323,9 @@ public class H2ClientAccessor extends SQLProvider implements ClientAccessor
 				result.nextSyncStart = System.currentTimeMillis();
 				if (result.syncStart >= result.nextSyncStart)
 					throw new RuntimeException("invalid syncStart"); // TODO: maybe wait a millisec instead?
-				List<ClientSyncEvent> clientSEs = getClientChanges(conn);
-				result.events = server.sync(userId, syncStart, result.nextSyncStart, clientSEs);
+				result.events = server.sync(userId, syncStart, result.nextSyncStart, getClientChanges(conn));
+				for (ServerSyncEvent event : result.events)
+					applySync(conn, event);
 				resetClientChanges(conn);
 				return result;
 			}
@@ -358,6 +360,23 @@ public class H2ClientAccessor extends SQLProvider implements ClientAccessor
 				}
 				finally
 				{
+				}
+			}
+
+			private void applySync(Connection conn, ServerSyncEvent syncEntity) throws SQLException
+			{
+				String id = syncEntity.id;
+				long subId = syncEntity.subId;
+
+				switch (syncEntity.changeType)
+				{
+					case CHANGE:
+						mergeKV(conn, id, subId, syncEntity.type, syncEntity.value, System.currentTimeMillis());
+						break;
+
+					case DELETE:
+						deleteOrPurgeKV(conn, userId, subId, System.currentTimeMillis(), false);
+						break;
 				}
 			}
 		});
