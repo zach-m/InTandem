@@ -1,13 +1,13 @@
-package tectonica.intandem.impl.h2;
+package tectonica.intandem.impl.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import org.h2.jdbcx.JdbcConnectionPool;
+import javax.sql.DataSource;
 
-public class SQLProvider
+public class JdbcBaseProvider
 {
-	protected JdbcConnectionPool connPool;
+	protected DataSource connPool;
 
 	protected static interface ConnListener<T>
 	{
@@ -66,5 +66,4 @@ public class SQLProvider
 			throw new RuntimeException(e);
 		}
 	}
-
 }

@@ -1,4 +1,4 @@
-package tectonica.intandem.impl.h2;
+package tectonica.intandem.impl.jdbc;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.h2.jdbcx.JdbcConnectionPool;
 import org.slf4j.LoggerFactory;
 
 import tectonica.intandem.framework.AbstractSyncEvent;
@@ -21,82 +20,16 @@ import tectonica.intandem.framework.server.ServerChangeType;
 import tectonica.intandem.framework.server.ServerSyncEvent;
 import ch.qos.logback.classic.Logger;
 
-public class H2ServerAccessor extends SQLProvider implements ServerAccessor
+public abstract class JdbcServerAccessor extends JdbcBaseProvider implements ServerAccessor, SqlServer
 {
-	private static final String CONN_STR = "jdbc:h2:mem:server";
-	private static final String CONN_USERNAME = "sa";
-	private static final String CONN_PASSWORD = "sa";
+	protected static final Logger LOG = (Logger) LoggerFactory.getLogger(JdbcServerAccessor.class.getSimpleName());
 
-	private static final long ALL_SUBS = -999999;
-
-	// //////////////////////////////////////////////////////////////////////////////////////
-	//
-	// Key-Value Modeling ("KV")
-	//
-	// //////////////////////////////////////////////////////////////////////////////////////
-	private static final String KV_INIT = "CREATE TABLE KVDB (K VARCHAR2, SK BIGINT, T VARCHAR2, V VARCHAR2, UT BIGINT, D TINYINT, PRIMARY KEY(K, SK))";
-	private static final String KV_READ_SINGLE = "SELECT V FROM KVDB WHERE (K = ?) AND (SK = ?) AND (D = 0)";
-	private static final String KV_READ_MULTIPLE = "SELECT V FROM KVDB WHERE (K = ?) AND (SK BETWEEN ? AND ?) AND (D = 0)";
-	private static final String KV_MERGE = "MERGE INTO KVDB KEY (K, SK) VALUES (?, ?, ?, ?, ?, 0)";
-	private static final String KV_REPLACE = "UPDATE KVDB SET T = ?, V = ?, UT = ? WHERE (K = ?) AND (SK = ?) AND (D = 0)";
-	private static final String KV_CHECK = "SELECT 1 FROM KVDB WHERE (K = ?) AND (SK = ?) AND (D = 0)";
-	private static final String KV_DELETE = "UPDATE KVDB SET UT = ?, D = 1 WHERE (K = ?) AND (SK = ?) AND (D = 0)";
-	private static final String KV_DELETE_ALL = "UPDATE KVDB SET UT = ?, D = 1 WHERE (K = ?) AND (D = 0)";
-	private static final String KV_MAX = "SELECT MAX(SK) FROM KVDB WHERE (K = ?)";
-
-	// //////////////////////////////////////////////////////////////////////////////////////
-	//
-	// User-Key Modeling ("SYNC")
-	//
-	// //////////////////////////////////////////////////////////////////////////////////////
-	private static final String SYNC_INIT = "CREATE TABLE SYNCDB (U VARCHAR2, K VARCHAR2, SK BIGINT, SUT BIGINT, SD TINYINT, PRIMARY KEY(U, K, SK))";
-	private static final String SYNC_ASSOC = "MERGE INTO SYNCDB KEY (U, K, SK) VALUES (?, ?, ?, ?, 0)";
-	private static final String SYNC_DISAS = "UPDATE SYNCDB SET SUT = ?, SD = 1 WHERE (U = ?) AND (K = ?) AND (SK = ?) AND (SD = 0)";
-	private static final String SYNC_GET_CHANGES = "" + //
-			"SELECT SYNCDB.K, SYNCDB.SK, UT, D, SUT, SD, T, V " + //
-			"FROM SYNCDB JOIN KVDB ON (SYNCDB.K = KVDB.K AND (SYNCDB.SK = KVDB.SK OR SYNCDB.SK = " + ALL_SUBS + ")) " + //
-			"WHERE (U = ?) AND (" + //
-			"(SUT > ? AND SUT <= ?) OR " + //
-			"((SUT <= ?) AND (UT > ? AND UT <= ?))" + //
-			")";
-
-	private static Logger LOG = (Logger) LoggerFactory.getLogger(H2ServerAccessor.class.getSimpleName());
-
-	public H2ServerAccessor()
-	{
-		this(CONN_STR, CONN_USERNAME, CONN_PASSWORD);
-	}
-
-	public H2ServerAccessor(String connStr, String username, String password)
-	{
-		String msg = "Initializing " + H2ServerAccessor.class.getSimpleName();
-		LOG.info(msg);
-
-		connPool = JdbcConnectionPool.create(connStr, username, password);
-		execute(new ConnListener<Void>()
-		{
-			@Override
-			public Void onConnection(Connection conn) throws SQLException
-			{
-				conn.createStatement().execute(KV_INIT);
-				conn.createStatement().execute(SYNC_INIT);
-				return null;
-			}
-		});
-
-		LOG.info("Done " + msg);
-	}
-
-	@Override
-	public void cleanup()
-	{
-		connPool.dispose();
-	}
+	protected static final long ALL_SUBS = -999999;
 
 	private void mergeKV(Connection conn, String id, long subId, String type, String value, long ts) throws SQLException
 	{
 //		System.err.println("updateKV " + ts);
-		try (PreparedStatement writeStmt = conn.prepareStatement(KV_MERGE))
+		try (PreparedStatement writeStmt = conn.prepareStatement(KV_MERGE()))
 		{
 			writeStmt.setString(1, id);
 			writeStmt.setLong(2, subId);
@@ -112,7 +45,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 
 	private <T extends Entity> boolean replaceKV(Connection conn, T entity) throws SQLException
 	{
-		try (PreparedStatement writeStmt = conn.prepareStatement(KV_REPLACE))
+		try (PreparedStatement writeStmt = conn.prepareStatement(KV_REPLACE()))
 		{
 			writeStmt.setString(1, entity.getType());
 			writeStmt.setString(2, entityToStr(entity));
@@ -130,7 +63,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private int deleteKV(Connection conn, String id, Long subId, long ts) throws SQLException
 	{
 //		System.err.println("deleteKV " + ts);
-		String stmt = (subId == null) ? KV_DELETE_ALL : KV_DELETE;
+		String stmt = (subId == null) ? KV_DELETE_ALL() : KV_DELETE();
 		try (PreparedStatement writeStmt = conn.prepareStatement(stmt))
 		{
 			writeStmt.setLong(1, ts);
@@ -148,7 +81,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private void associate(Connection conn, String userId, String id, long subId, long ts) throws SQLException
 	{
 //		System.err.println("assocSYNC " + ts);
-		try (PreparedStatement writeStmt = conn.prepareStatement(SYNC_ASSOC))
+		try (PreparedStatement writeStmt = conn.prepareStatement(SYNC_ASSOC()))
 		{
 			writeStmt.setString(1, userId);
 			writeStmt.setString(2, id);
@@ -164,7 +97,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 	private void disassociate(Connection conn, String userId, String id, long subId, long ts) throws SQLException
 	{
 //		System.err.println("disassocSYNC " + ts);
-		try (PreparedStatement writeStmt = conn.prepareStatement(SYNC_DISAS))
+		try (PreparedStatement writeStmt = conn.prepareStatement(SYNC_DISAS()))
 		{
 			writeStmt.setLong(1, ts);
 			writeStmt.setString(2, userId);
@@ -185,7 +118,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public List<T> onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(KV_READ_MULTIPLE))
+				try (PreparedStatement readStmt = conn.prepareStatement(KV_READ_MULTIPLE()))
 				{
 					readStmt.setString(1, id);
 					readStmt.setLong(2, subIdFrom);
@@ -238,7 +171,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public Boolean onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(KV_READ_SINGLE))
+				try (PreparedStatement readStmt = conn.prepareStatement(KV_READ_SINGLE()))
 				{
 					readStmt.setString(1, partialEntity.getId());
 					readStmt.setLong(2, partialEntity.getSubId());
@@ -266,7 +199,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public Boolean onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(KV_CHECK))
+				try (PreparedStatement readStmt = conn.prepareStatement(KV_CHECK()))
 				{
 					readStmt.setString(1, id);
 					readStmt.setLong(2, subId);
@@ -314,7 +247,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			@Override
 			public Long onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(KV_MAX))
+				try (PreparedStatement readStmt = conn.prepareStatement(KV_MAX()))
 				{
 					readStmt.setString(1, id);
 					ResultSet rs = readStmt.executeQuery();
@@ -375,7 +308,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 //				System.err.println("SYNCING " + syncStart + " .. " + syncEnd);
 //				printTable(conn, "KVDB");
 //				printTable(conn, "SYNCDB");
-				try (PreparedStatement readStmt = conn.prepareStatement(SYNC_GET_CHANGES))
+				try (PreparedStatement readStmt = conn.prepareStatement(SYNC_GET_CHANGES()))
 				{
 					readStmt.setString(1, userId);
 					readStmt.setLong(2, syncStart);
@@ -504,20 +437,6 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 				// TODO: implement (fire an event)
 				return serverSE;
 			}
-
-			@SuppressWarnings("unused")
-			private void printTable(Connection conn, String tableName) throws SQLException
-			{
-				ResultSet rs = conn.createStatement().executeQuery("SELECT * FROM " + tableName);
-				System.out.println(">>>>>>>>> Printing " + tableName);
-				while (rs.next())
-				{
-					for (int i = 0; i <= rs.getMetaData().getColumnCount() - 1; i++)
-						System.out.print(rs.getObject(i + 1).toString() + " | ");
-					System.out.println();
-				}
-				System.out.println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-			}
 		});
 	}
 
@@ -535,5 +454,24 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 			}
 		}
 		return index;
+	}
+
+	@SuppressWarnings("unused")
+	private void printTable(Connection conn, String tableName) throws SQLException
+	{
+		ResultSet rs = conn.createStatement().executeQuery("SELECT * FROM " + tableName);
+		System.out.println(">>>>>>>>> Printing " + tableName);
+		printResultSet(rs);
+		System.out.println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+	}
+
+	private void printResultSet(ResultSet rs) throws SQLException
+	{
+		while (rs.next())
+		{
+			for (int i = 0; i <= rs.getMetaData().getColumnCount() - 1; i++)
+				System.out.print(rs.getObject(i + 1).toString() + " | ");
+			System.out.println();
+		}
 	}
 }

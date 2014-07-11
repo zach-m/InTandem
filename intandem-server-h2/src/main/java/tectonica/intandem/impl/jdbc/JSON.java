@@ -1,4 +1,4 @@
-package tectonica.intandem.impl.h2;
+package tectonica.intandem.impl.jdbc;
 
 import java.io.IOException;
 
