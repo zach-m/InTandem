@@ -1,4 +1,4 @@
-package tectonica.intandem.framework;
+package tectonica.intandem.framework.util;
 
 import java.util.Random;
 

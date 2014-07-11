@@ -21,6 +21,8 @@ import ch.qos.logback.classic.Logger;
 
 public class H2ClientAccessor extends SQLProvider implements ClientAccessor
 {
+	private static final int DB_UPDATE_TIME_SAFETY_MS = 50; // must be at least 1
+
 	private static final String CONN_STR = "jdbc:h2:mem:client";
 	private static final String CONN_USERNAME = "sa";
 	private static final String CONN_PASSWORD = "sa";
@@ -320,7 +322,7 @@ public class H2ClientAccessor extends SQLProvider implements ClientAccessor
 			{
 				SyncResult result = new SyncResult();
 				result.syncStart = syncStart;
-				result.nextSyncStart = System.currentTimeMillis();
+				result.nextSyncStart = System.currentTimeMillis() - DB_UPDATE_TIME_SAFETY_MS;
 				if (result.syncStart >= result.nextSyncStart)
 					throw new RuntimeException("invalid syncStart"); // TODO: maybe wait a millisec instead?
 				result.events = server.sync(userId, syncStart, result.nextSyncStart, getClientChanges(conn));

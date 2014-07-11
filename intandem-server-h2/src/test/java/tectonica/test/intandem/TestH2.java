@@ -23,6 +23,9 @@ import tectonica.test.intandem.model.SyncResults;
 
 public class TestH2
 {
+	private static final int NETWORK_LATENCY_MS = 100;
+	private static final int DB_UPDATE_TIME_SAFETY_MS = 1; // must be at least 1
+
 	private static ServerAccessor s;
 	private static ClientAccessor c;
 
@@ -128,19 +131,18 @@ public class TestH2
 
 	public SyncResults serverSync(String userId, long syncStart, List<ClientSyncEvent> clientSEs)
 	{
-//		sleep(2); // TODO: this doesn't work!!
-		long syncEnd = System.currentTimeMillis();
+		sleep(NETWORK_LATENCY_MS);
+		long syncEnd = System.currentTimeMillis() - DB_UPDATE_TIME_SAFETY_MS;
 //		System.err.println("syncStart=" + syncStart + ", syncEnd=" + syncEnd);
 //		if (syncStart >= syncEnd)
 //			throw new RuntimeException("syncStart=" + syncStart + ", syncEnd=" + syncEnd);
 		List<ServerSyncEvent> syncEntities = s.sync(userId, syncStart, syncEnd, clientSEs);
-		sleep(1);
 		return SyncResults.create(syncStart, syncEnd, syncEntities);
 	}
 
 	public SyncResult clientSync(long syncStart)
 	{
-		sleep(1);
+		sleep(NETWORK_LATENCY_MS);
 		return c.sync(s, "user1", syncStart);
 	}
 

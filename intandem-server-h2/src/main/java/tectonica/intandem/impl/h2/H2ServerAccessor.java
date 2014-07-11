@@ -387,7 +387,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 					List<ServerSyncEvent> list = new ArrayList<>();
 					while (rs.next())
 					{
-						ServerSyncEvent serverSE = extractServerSE(rs, syncStart, syncEnd);
+						ServerSyncEvent serverSE = extractServerSE(rs);
 						if (serverSE == null)
 							continue;
 						ServerSyncEvent resolvedSE = checkConflict(serverSE, conn);
@@ -408,7 +408,7 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 				}
 			}
 
-			private ServerSyncEvent extractServerSE(ResultSet rs, final long syncStart, final long syncEnd) throws SQLException
+			private ServerSyncEvent extractServerSE(ResultSet rs) throws SQLException
 			{
 				final String id = rs.getString(1);
 				final long subId = rs.getLong(2);
@@ -498,13 +498,6 @@ public class H2ServerAccessor extends SQLProvider implements ServerAccessor
 				return serverSE;
 			}
 
-			/**
-			 * required to return a valid ServerSE
-			 * 
-			 * @param serverSE
-			 * @param clientSE
-			 * @return
-			 */
 			private ServerSyncEvent resolve(ServerSyncEvent serverSE, AbstractSyncEvent clientSE)
 			{
 				LOG.warn("CONFLICT: " + clientSE + " -- vs -- " + serverSE);
