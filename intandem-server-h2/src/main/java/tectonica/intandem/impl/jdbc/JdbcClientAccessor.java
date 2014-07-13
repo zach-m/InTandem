@@ -276,6 +276,7 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 					ClientChangeType changeType = ClientChangeType.fromCode(rs.getByte(5));
 					list.add(ClientSyncEvent.create(id, subId, type, value, changeType));
 				}
+				LOG.debug("Client changes found: " + list.size());
 				return list;
 			}
 

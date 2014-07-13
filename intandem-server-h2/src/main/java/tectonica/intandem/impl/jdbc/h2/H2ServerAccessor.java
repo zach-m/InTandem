@@ -125,7 +125,7 @@ public class H2ServerAccessor extends JdbcServerAccessor
 	public String SYNC_GET_CHANGES()
 	{
 		return "" + //
-				"SELECT SYNCDB.K, SYNCDB.SK, UT, D, SUT, SD, T, V " + //
+				"SELECT KVDB.K, KVDB.SK, UT, D, SUT, SD, T, V " + //
 				"FROM SYNCDB JOIN KVDB ON (SYNCDB.K = KVDB.K AND (SYNCDB.SK = KVDB.SK OR SYNCDB.SK = " + ALL_SUBS + ")) " + //
 				"WHERE (U = ?) AND (" + //
 				"(SUT > ? AND SUT <= ?) OR " + //

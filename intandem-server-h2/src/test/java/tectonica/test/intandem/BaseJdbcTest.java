@@ -113,9 +113,14 @@ public abstract class BaseJdbcTest
 
 		System.out.println("Running simple client-sync tests..");
 
-		clientSync(0L);
+		SyncResult sr = clientSync(0L);
 		Person b1 = c.get("b", 1, 1, Person.class).get(0);
 		Assert.assertEquals(b1, latestB1);
+
+		b1.name = "Client B1";
+		c.put(b1);
+		sr = clientSync(sr.nextSyncStart);
+		Assert.assertEquals(0, sr.events.size()); // expected empty as we made no further changes
 
 		System.out.println("--------------------------------------------------------");
 	}
@@ -134,7 +139,11 @@ public abstract class BaseJdbcTest
 	public SyncResult clientSync(long syncStart)
 	{
 		sleep(NETWORK_LATENCY_MS);
-		return c.sync(s, "user1", syncStart);
+		SyncResult sr = c.sync(s, "user1", syncStart);
+		for (ServerSyncEvent event : sr.events)
+			System.err.println(event);
+		System.err.println("***************************************************");
+		return sr;
 	}
 
 	public void sleep(int ms)
