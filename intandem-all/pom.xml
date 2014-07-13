@@ -9,7 +9,7 @@
 
 	<modules>
 		<module>../intandem-framework</module>
-		<module>../intandem-server-h2</module>
+		<module>../intandem-jdbc</module>
 	</modules>
 
 	<properties>
@@ -57,7 +57,7 @@
 			</dependency>
 			<dependency>
 				<groupId>tectonica</groupId>
-				<artifactId>intandem-server-h2</artifactId>
+				<artifactId>intandem-jdbc</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 
