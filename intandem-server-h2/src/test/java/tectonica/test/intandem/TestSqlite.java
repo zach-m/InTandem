@@ -10,7 +10,8 @@ public class TestSqlite extends BaseJdbcTest
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception
 	{
-		s = new SqliteServerAccessor();
-		c = new SqliteClientAccessor();
+		String connStrBase = "jdbc:sqlite:" + TestSqlite.class.getResource("/").getPath();
+		s = new SqliteServerAccessor(connStrBase + "server.db");
+		c = new SqliteClientAccessor(connStrBase + "client.db");
 	}
 }

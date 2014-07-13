@@ -71,6 +71,7 @@ public abstract class BaseJdbcTest
 		Assert.assertEquals(0, s.get("c", 0, 0, Person.class).size());
 		Assert.assertEquals(0, s.get("d", 0, 0, Person.class).size());
 		Assert.assertFalse(s.exists("d", 0));
+		Assert.assertTrue(s.exists("b", 1));
 
 		// patch b-1
 		Person subPerson = Person.create("b", 1, "Name B1", null, null);

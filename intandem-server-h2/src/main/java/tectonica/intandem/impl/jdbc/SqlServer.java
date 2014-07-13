@@ -16,11 +16,13 @@ public interface SqlServer
 
 	public String KV_CHECK();
 
+	public String KV_MAX();
+
 	public String KV_DELETE();
 
 	public String KV_DELETE_ALL();
 
-	public String KV_MAX();
+	public String SYNC_GET_CHANGES();
 
 	public String SYNC_INIT();
 
@@ -29,6 +31,4 @@ public interface SqlServer
 	public String SYNC_ASSOC();
 
 	public String SYNC_DISAS();
-
-	public String SYNC_GET_CHANGES();
 }

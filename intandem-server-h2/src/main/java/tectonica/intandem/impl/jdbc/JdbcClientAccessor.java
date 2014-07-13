@@ -27,56 +27,85 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 	private void mergeKV(Connection conn, String id, long subId, String type, String value, long ts) throws SQLException
 	{
 //		System.err.println("updateKV " + ts);
-		try (PreparedStatement writeStmt = conn.prepareStatement(KV_MERGE()))
-		{
-			writeStmt.setString(1, id);
-			writeStmt.setLong(2, subId);
-			writeStmt.setString(3, type);
-			writeStmt.setString(4, value);
-			writeStmt.setLong(5, ts);
-			writeStmt.setByte(6, ClientChangeType.CHANGE.code);
-			writeStmt.executeUpdate();
-		}
-		finally
-		{
-		}
+		PreparedStatement writeStmt = conn.prepareStatement(KV_MERGE());
+		writeStmt.setString(1, id);
+		writeStmt.setLong(2, subId);
+		writeStmt.setString(3, type);
+		writeStmt.setString(4, value);
+		writeStmt.setLong(5, ts);
+		writeStmt.setByte(6, ClientChangeType.CHANGE.code);
+		writeStmt.executeUpdate();
 	}
 
 	private <T extends Entity> boolean replaceKV(Connection conn, T entity) throws SQLException
 	{
-		try (PreparedStatement writeStmt = conn.prepareStatement(KV_REPLACE()))
-		{
-			writeStmt.setString(1, entity.getType());
-			writeStmt.setString(2, entityToStr(entity));
-			writeStmt.setLong(3, System.currentTimeMillis());
-			writeStmt.setByte(4, ClientChangeType.REPLACE.code);
-			writeStmt.setString(5, entity.getId());
-			writeStmt.setLong(6, entity.getSubId());
-			int count = writeStmt.executeUpdate();
-			return (count > 0);
-		}
-		finally
-		{
-		}
+		PreparedStatement writeStmt = conn.prepareStatement(KV_REPLACE());
+		writeStmt.setString(1, entity.getType());
+		writeStmt.setString(2, entityToStr(entity));
+		writeStmt.setLong(3, System.currentTimeMillis());
+		writeStmt.setByte(4, ClientChangeType.REPLACE.code);
+		writeStmt.setString(5, entity.getId());
+		writeStmt.setLong(6, entity.getSubId());
+		int count = writeStmt.executeUpdate();
+		return (count > 0);
 	}
 
 	private int deleteOrPurgeKV(Connection conn, String id, Long subId, long ts, boolean purge) throws SQLException
 	{
 //		System.err.println("deleteKV " + ts);
 		String stmt = (subId == null) ? KV_DELETE_PURGE_ALL() : KV_DELETE_PURGE();
-		try (PreparedStatement writeStmt = conn.prepareStatement(stmt))
-		{
-			writeStmt.setLong(1, ts);
-			writeStmt.setByte(2, purge ? ClientChangeType.PURGE.code : ClientChangeType.DELETE.code);
-			writeStmt.setString(3, id);
-			if (subId != null)
-				writeStmt.setLong(4, subId);
-			int count = writeStmt.executeUpdate();
-			return count;
-		}
-		finally
-		{
-		}
+		PreparedStatement writeStmt = conn.prepareStatement(stmt);
+		writeStmt.setLong(1, ts);
+		writeStmt.setByte(2, purge ? ClientChangeType.PURGE.code : ClientChangeType.DELETE.code);
+		writeStmt.setString(3, id);
+		if (subId != null)
+			writeStmt.setLong(4, subId);
+		int count = writeStmt.executeUpdate();
+		return count;
+	}
+
+	private boolean existsKV(Connection conn, final String id, final long subId) throws SQLException
+	{
+		PreparedStatement readStmt = conn.prepareStatement(KV_CHECK());
+		readStmt.setString(1, id);
+		readStmt.setLong(2, subId);
+		ResultSet rs = readStmt.executeQuery();
+		return (rs.next());
+	}
+
+	private <T extends PatchableEntity> T readSingle(Connection conn, String id, long subId, Class<T> clz) throws SQLException
+	{
+		PreparedStatement readStmt = conn.prepareStatement(KV_READ_SINGLE());
+		readStmt.setString(1, id);
+		readStmt.setLong(2, subId);
+		ResultSet rs = readStmt.executeQuery();
+		if (rs.next())
+			return strToEntity(rs.getString(1), clz);
+		return null;
+	}
+
+	private <T extends Entity> List<T> readMultiple(Connection conn, final String id, final long subIdFrom, final long subIdTo,
+			final Class<T> clz) throws SQLException
+	{
+		PreparedStatement readStmt = conn.prepareStatement(KV_READ_MULTIPLE());
+		readStmt.setString(1, id);
+		readStmt.setLong(2, subIdFrom);
+		readStmt.setLong(3, subIdTo);
+		ResultSet rs = readStmt.executeQuery();
+		List<T> list = new ArrayList<>();
+		while (rs.next())
+			list.add(strToEntity(rs.getString(1), clz));
+		return list;
+	}
+
+	private long maxSubKV(Connection conn, final String id) throws SQLException
+	{
+		PreparedStatement readStmt = conn.prepareStatement(KV_MAX());
+		readStmt.setString(1, id);
+		ResultSet rs = readStmt.executeQuery();
+		if (rs.next())
+			return rs.getLong(1);
+		return 0L;
 	}
 
 	@Override
@@ -87,20 +116,7 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 			@Override
 			public List<T> onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(KV_READ_MULTIPLE()))
-				{
-					readStmt.setString(1, id);
-					readStmt.setLong(2, subIdFrom);
-					readStmt.setLong(3, subIdTo);
-					ResultSet rs = readStmt.executeQuery();
-					List<T> list = new ArrayList<>();
-					while (rs.next())
-						list.add(strToEntity(rs.getString(1), clz));
-					return list;
-				}
-				finally
-				{
-				}
+				return readMultiple(conn, id, subIdFrom, subIdTo, clz);
 			}
 		});
 	}
@@ -133,29 +149,20 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 	}
 
 	@Override
-	public <T extends Entity> boolean patch(final T partialEntity, final Class<T> clz)
+	public <T extends Entity, R extends PatchableEntity> boolean patch(final T partialEntity, final Class<R> clz)
 	{
 		return transact(new ConnListener<Boolean>()
 		{
 			@Override
 			public Boolean onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(KV_READ_SINGLE()))
-				{
-					readStmt.setString(1, partialEntity.getId());
-					readStmt.setLong(2, partialEntity.getSubId());
-					ResultSet rs = readStmt.executeQuery();
-					if (!rs.next())
-						return Boolean.FALSE;
+				R entity = readSingle(conn, partialEntity.getId(), partialEntity.getSubId(), clz);
 
-					// if the following casting fails, it means that patching was tried on entity that doesn't support patching
-					PatchableEntity entity = (PatchableEntity) strToEntity(rs.getString(1), clz);
-					entity.patchWith(partialEntity);
-					return Boolean.valueOf(replaceKV(conn, entity)); // theoretically should always be TRUE
-				}
-				finally
-				{
-				}
+				if (entity == null)
+					return Boolean.FALSE;
+
+				entity.patchWith(partialEntity);
+				return Boolean.valueOf(replaceKV(conn, entity)); // theoretically should always be TRUE
 			}
 		});
 	}
@@ -168,16 +175,7 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 			@Override
 			public Boolean onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(KV_CHECK()))
-				{
-					readStmt.setString(1, id);
-					readStmt.setLong(2, subId);
-					ResultSet rs = readStmt.executeQuery();
-					return (rs.next());
-				}
-				finally
-				{
-				}
+				return existsKV(conn, id, subId);
 			}
 		});
 	}
@@ -229,17 +227,7 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 			@Override
 			public Long onConnection(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(KV_MAX()))
-				{
-					readStmt.setString(1, id);
-					ResultSet rs = readStmt.executeQuery();
-					if (rs.next())
-						return rs.getLong(1);
-					return 0L;
-				}
-				finally
-				{
-				}
+				return maxSubKV(conn, id);
 			}
 		});
 	}
@@ -276,35 +264,25 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 
 			private ArrayList<ClientSyncEvent> getClientChanges(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(SYNC_GET_CHANGES()))
+				PreparedStatement readStmt = conn.prepareStatement(SYNC_GET_CHANGES());
+				ResultSet rs = readStmt.executeQuery();
+				ArrayList<ClientSyncEvent> list = new ArrayList<ClientSyncEvent>();
+				while (rs.next())
 				{
-					ResultSet rs = readStmt.executeQuery();
-					ArrayList<ClientSyncEvent> list = new ArrayList<ClientSyncEvent>();
-					while (rs.next())
-					{
-						String id = rs.getString(1);
-						long subId = rs.getLong(2);
-						String type = rs.getString(3);
-						String value = rs.getString(4);
-						ClientChangeType changeType = ClientChangeType.fromCode(rs.getByte(5));
-						list.add(ClientSyncEvent.create(id, subId, type, value, changeType));
-					}
-					return list;
+					String id = rs.getString(1);
+					long subId = rs.getLong(2);
+					String type = rs.getString(3);
+					String value = rs.getString(4);
+					ClientChangeType changeType = ClientChangeType.fromCode(rs.getByte(5));
+					list.add(ClientSyncEvent.create(id, subId, type, value, changeType));
 				}
-				finally
-				{
-				}
+				return list;
 			}
 
 			private void resetClientChanges(Connection conn) throws SQLException
 			{
-				try (PreparedStatement readStmt = conn.prepareStatement(SYNC_RESET_CHANGES()))
-				{
-					readStmt.executeUpdate();
-				}
-				finally
-				{
-				}
+				PreparedStatement readStmt = conn.prepareStatement(SYNC_RESET_CHANGES());
+				readStmt.executeUpdate();
 			}
 
 			private void applySync(Connection conn, ServerSyncEvent syncEntity) throws SQLException

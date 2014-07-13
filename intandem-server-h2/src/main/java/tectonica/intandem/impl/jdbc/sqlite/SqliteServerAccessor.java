@@ -9,7 +9,7 @@ import tectonica.intandem.impl.jdbc.JdbcServerAccessor;
 
 public class SqliteServerAccessor extends JdbcServerAccessor
 {
-	public SqliteServerAccessor()
+	public SqliteServerAccessor(String connStr)
 	{
 		String msg = "Initializing " + this.getClass().getSimpleName();
 		LOG.info(msg);
@@ -23,8 +23,7 @@ public class SqliteServerAccessor extends JdbcServerAccessor
 			throw new RuntimeException(e);
 		}
 		connPool = new SQLiteDataSource();
-		String dbPath = this.getClass().getResource("/").getPath() + "server.db";
-		((SQLiteDataSource) connPool).setUrl("jdbc:sqlite:" + dbPath);
+		((SQLiteDataSource) connPool).setUrl(connStr);
 
 		execute(new ConnListener<Void>()
 		{

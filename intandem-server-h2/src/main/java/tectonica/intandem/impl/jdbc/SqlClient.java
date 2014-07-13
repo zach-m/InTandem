@@ -16,11 +16,11 @@ public interface SqlClient
 
 	public String KV_CHECK();
 
+	public String KV_MAX();
+
 	public String KV_DELETE_PURGE();
 
 	public String KV_DELETE_PURGE_ALL();
-
-	public String KV_MAX();
 
 	public String SYNC_GET_CHANGES();
 

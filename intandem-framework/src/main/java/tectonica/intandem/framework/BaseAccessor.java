@@ -10,7 +10,7 @@ public interface BaseAccessor
 
 	public <T extends Entity> boolean replace(T entity);
 
-	public <T extends Entity> boolean patch(T partialEntity, Class<T> clz);
+	public <T extends Entity, R extends PatchableEntity> boolean patch(T partialEntity, Class<R> clz);
 
 	public boolean exists(String id, long subId);
 

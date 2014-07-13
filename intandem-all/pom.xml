@@ -34,11 +34,34 @@
 
 	<dependencyManagement>
 		<dependencies>
+			<!-- basic dependencies -->
+
+			<dependency>
+				<groupId>junit</groupId>
+				<artifactId>junit</artifactId>
+				<version>4.8.2</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>ch.qos.logback</groupId>
+				<artifactId>logback-classic</artifactId>
+				<version>1.1.2</version>
+			</dependency>
+
+			<!-- internal dependencies -->
+
 			<dependency>
 				<groupId>tectonica</groupId>
 				<artifactId>intandem-framework</artifactId>
-				<version>0.0.1-SNAPSHOT</version>
+				<version>${project.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>tectonica</groupId>
+				<artifactId>intandem-server-h2</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+
+			<!-- tools -->
 
 			<dependency>
 				<groupId>com.fasterxml.jackson.module</groupId>
@@ -46,29 +69,17 @@
 				<version>2.4.1</version>
 			</dependency>
 
+			<!-- database engines -->
+
 			<dependency>
 				<groupId>com.h2database</groupId>
 				<artifactId>h2</artifactId>
 				<version>1.4.178</version>
 			</dependency>
-
 			<dependency>
 				<groupId>org.xerial</groupId>
 				<artifactId>sqlite-jdbc</artifactId>
 				<version>3.7.2</version>
-			</dependency>
-			
-			<dependency>
-				<groupId>ch.qos.logback</groupId>
-				<artifactId>logback-classic</artifactId>
-				<version>1.1.2</version>
-			</dependency>
-
-			<dependency>
-				<groupId>junit</groupId>
-				<artifactId>junit</artifactId>
-				<version>4.8.2</version>
-				<scope>test</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

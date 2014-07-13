@@ -9,15 +9,6 @@ import tectonica.intandem.impl.jdbc.JdbcClientAccessor;
 
 public class H2ClientAccessor extends JdbcClientAccessor
 {
-	private static final String CONN_STR = "jdbc:h2:mem:client";
-	private static final String CONN_USERNAME = "sa";
-	private static final String CONN_PASSWORD = "sa";
-
-	public H2ClientAccessor()
-	{
-		this(CONN_STR, CONN_USERNAME, CONN_PASSWORD);
-	}
-
 	public H2ClientAccessor(String connStr, String username, String password)
 	{
 		String msg = "Initializing " + this.getClass().getSimpleName();
