@@ -1,11 +1,8 @@
 package tectonica.test.intandem.model;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import tectonica.intandem.framework.Entity;
 import tectonica.intandem.framework.PatchableEntity;
 
-@XmlRootElement
 public class Person implements PatchableEntity
 {
 	public String id;

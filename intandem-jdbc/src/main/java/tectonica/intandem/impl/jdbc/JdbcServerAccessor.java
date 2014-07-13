@@ -242,12 +242,15 @@ public abstract class JdbcServerAccessor extends JdbcBaseProvider implements Ser
 
 	private <T extends Entity> T strToEntity(String entityAsJson, final Class<T> clz)
 	{
+//		System.err.println(entityAsJson);
 		return JSON.fromJson(entityAsJson, clz);
 	}
 
 	private <T extends Entity> String entityToStr(final T entity)
 	{
-		return JSON.toJson(entity);
+		String entityAsJson = JSON.toJson(entity);
+//		System.err.println(entityAsJson);
+		return entityAsJson;
 	}
 
 	@Override

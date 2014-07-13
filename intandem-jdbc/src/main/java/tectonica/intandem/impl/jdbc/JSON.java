@@ -2,37 +2,39 @@ package tectonica.intandem.impl.jdbc;
 
 import java.io.IOException;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule;
 
 public class JSON
 {
-	private static final ObjectMapper jaxbJson = createJaxbMapper();
+	private static final ObjectMapper fieldsMapper = createFieldsMapper();
 
-	public static ObjectMapper createJaxbMapper()
+	public static ObjectMapper createFieldsMapper()
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		mapper.registerModule(new JaxbAnnotationModule());
 		mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+		mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+		mapper.setVisibility(PropertyAccessor.GETTER, Visibility.NONE);
+		mapper.setVisibility(PropertyAccessor.SETTER, Visibility.NONE);
 		mapper.setSerializationInclusion(Include.NON_NULL);
-//		mapper.registerModule(new JodaModule());
 		return mapper;
 	}
 
 	public static ObjectMapper getJaxbMapper()
 	{
-		return jaxbJson;
+		return fieldsMapper;
 	}
 
 	public static String toJson(Object o)
 	{
 		try
 		{
-			if (jaxbJson.canSerialize(o.getClass()))
-				return (jaxbJson.writeValueAsString(o));
+			if (fieldsMapper.canSerialize(o.getClass()))
+				return (fieldsMapper.writeValueAsString(o));
 		}
 		catch (JsonProcessingException e)
 		{
@@ -45,7 +47,7 @@ public class JSON
 	{
 		try
 		{
-			return jaxbJson.readValue(jsonStr, clz);
+			return fieldsMapper.readValue(jsonStr, clz);
 		}
 		catch (IOException e)
 		{
