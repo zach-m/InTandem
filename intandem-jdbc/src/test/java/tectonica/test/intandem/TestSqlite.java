@@ -13,5 +13,6 @@ public class TestSqlite extends BaseJdbcTest
 		String connStrBase = "jdbc:sqlite:" + TestSqlite.class.getResource("/").getPath();
 		s = new SqliteServerAccessor(connStrBase + "server.db");
 		c = new SqliteClientAccessor(connStrBase + "client.db");
+		initProxy();
 	}
 }

@@ -14,8 +14,8 @@ import tectonica.intandem.framework.PatchableEntity;
 import tectonica.intandem.framework.client.ClientAccessor;
 import tectonica.intandem.framework.client.ClientChangeType;
 import tectonica.intandem.framework.client.ClientSyncEvent;
-import tectonica.intandem.framework.server.ServerAccessor;
 import tectonica.intandem.framework.server.ServerSyncEvent;
+import tectonica.intandem.framework.transport.ServerAccessorProxy;
 import ch.qos.logback.classic.Logger;
 
 public abstract class JdbcClientAccessor extends JdbcBaseProvider implements ClientAccessor, SqlClient
@@ -243,7 +243,7 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 	}
 
 	@Override
-	public SyncResult sync(final ServerAccessor server, final String userId, final long syncStart)
+	public SyncResult sync(final ServerAccessorProxy server, final String userId, final long syncStart)
 	{
 		return transact(new ConnListener<SyncResult>()
 		{

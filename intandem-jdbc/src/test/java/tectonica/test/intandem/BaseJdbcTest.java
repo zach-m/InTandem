@@ -15,6 +15,7 @@ import tectonica.intandem.framework.client.ClientSyncEvent;
 import tectonica.intandem.framework.server.ServerAccessor;
 import tectonica.intandem.framework.server.ServerChangeType;
 import tectonica.intandem.framework.server.ServerSyncEvent;
+import tectonica.intandem.framework.transport.ServerAccessorProxy;
 import tectonica.test.intandem.model.Person;
 import tectonica.test.intandem.model.SyncResults;
 
@@ -25,7 +26,24 @@ public abstract class BaseJdbcTest
 
 	protected static ServerAccessor s;
 	protected static ClientAccessor c;
+	protected static ServerAccessorProxy sp;
 
+	protected static void initProxy()
+	{
+		sp = new ServerAccessorProxy()
+		{
+			@Override
+			public void setUrl(String url)
+			{}
+
+			@Override
+			public List<ServerSyncEvent> sync(String userId, long syncStart, long syncEnd, List<ClientSyncEvent> clientSEs)
+			{
+				return s.sync(userId, syncStart, syncEnd, clientSEs);
+			}
+		};
+	}
+	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception
 	{
@@ -139,7 +157,7 @@ public abstract class BaseJdbcTest
 	public SyncResult clientSync(long syncStart)
 	{
 		sleep(NETWORK_LATENCY_MS);
-		SyncResult sr = c.sync(s, "user1", syncStart);
+		SyncResult sr = c.sync(sp, "user1", syncStart);
 		for (ServerSyncEvent event : sr.events)
 			System.err.println(event);
 		System.err.println("***************************************************");

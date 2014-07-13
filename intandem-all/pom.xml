@@ -10,6 +10,7 @@
 	<modules>
 		<module>../intandem-framework</module>
 		<module>../intandem-jdbc</module>
+		<module>../intandem-transport</module>
 	</modules>
 
 	<properties>
@@ -60,12 +61,17 @@
 				<artifactId>intandem-jdbc</artifactId>
 				<version>${project.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>tectonica</groupId>
+				<artifactId>intandem-transport</artifactId>
+				<version>${project.version}</version>
+			</dependency>
 
 			<!-- tools -->
 
 			<dependency>
-				<groupId>com.fasterxml.jackson.module</groupId>
-				<artifactId>jackson-module-jaxb-annotations</artifactId>
+				<groupId>com.fasterxml.jackson.core</groupId>
+				<artifactId>jackson-databind</artifactId>
 				<version>2.4.1</version>
 			</dependency>
 

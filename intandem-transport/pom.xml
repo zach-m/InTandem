@@ -2,7 +2,11 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<artifactId>intandem-jdbc</artifactId>
+	<artifactId>intanden-transport</artifactId>
+
+	<properties>
+		<version.jetty>9.2.1.v20140609</version.jetty>
+	</properties>
 
 	<parent>
 		<groupId>tectonica</groupId>
@@ -29,6 +33,10 @@
 			<groupId>tectonica</groupId>
 			<artifactId>intandem-framework</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>tectonica</groupId>
+			<artifactId>intandem-jdbc</artifactId>
+		</dependency>
 
 		<!-- tools -->
 
@@ -46,6 +54,21 @@
 		<dependency>
 			<groupId>org.xerial</groupId>
 			<artifactId>sqlite-jdbc</artifactId>
+		</dependency>
+
+		<!-- Jetty -->
+
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-server</artifactId>
+			<version>${version.jetty}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-servlet</artifactId>
+			<version>${version.jetty}</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>

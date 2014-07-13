@@ -3,8 +3,8 @@ package tectonica.intandem.framework.client;
 import java.util.List;
 
 import tectonica.intandem.framework.BaseAccessor;
-import tectonica.intandem.framework.server.ServerAccessor;
 import tectonica.intandem.framework.server.ServerSyncEvent;
+import tectonica.intandem.framework.transport.ServerAccessorProxy;
 
 public interface ClientAccessor extends BaseAccessor
 {
@@ -17,5 +17,5 @@ public interface ClientAccessor extends BaseAccessor
 
 	public int purge(String id, long subId);
 
-	public SyncResult sync(ServerAccessor server, String userId, long syncStart);
+	public SyncResult sync(ServerAccessorProxy server, String userId, long syncStart);
 }
