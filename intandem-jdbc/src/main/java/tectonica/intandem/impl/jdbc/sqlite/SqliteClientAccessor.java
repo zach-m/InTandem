@@ -2,6 +2,8 @@ package tectonica.intandem.impl.jdbc.sqlite;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
 
 import org.sqlite.SQLiteDataSource;
 
@@ -30,8 +32,8 @@ public class SqliteClientAccessor extends JdbcClientAccessor
 			@Override
 			public Void onConnection(Connection conn) throws SQLException
 			{
-				conn.createStatement().execute(KV_DROP());
-				conn.createStatement().execute(KV_INIT());
+				for (String stmt : KV_INIT())
+					conn.createStatement().execute(stmt);
 				return null;
 			}
 		});
@@ -44,15 +46,12 @@ public class SqliteClientAccessor extends JdbcClientAccessor
 	{}
 
 	@Override
-	public String KV_INIT()
+	public List<String> KV_INIT()
 	{
-		return "CREATE TABLE KVDB (K VARCHAR2, SK BIGINT, T VARCHAR2, V VARCHAR2, UT BIGINT, C TINYINT, PRIMARY KEY(K, SK))";
-	}
-
-	@Override
-	public String KV_DROP()
-	{
-		return "DROP TABLE IF EXISTS KVDB";
+		return Arrays.asList( //
+				"DROP TABLE IF EXISTS KVDB", //
+				"CREATE TABLE KVDB (K VARCHAR2, SK BIGINT, T VARCHAR2, V VARCHAR2, UT BIGINT, C TINYINT, PRIMARY KEY(K, SK))");
+		// TODO: add index on the type-name (column T)
 	}
 
 	@Override
@@ -62,9 +61,21 @@ public class SqliteClientAccessor extends JdbcClientAccessor
 	}
 
 	@Override
-	public String KV_READ_MULTIPLE()
+	public String KV_READ_SUB_RANGE()
 	{
 		return "SELECT V FROM KVDB WHERE (K = ?) AND (SK BETWEEN ? AND ?) AND (C >= 0)";
+	}
+
+	@Override
+	public String KV_READ_ALL_SUBS()
+	{
+		return "SELECT V FROM KVDB WHERE (K = ?) AND (D = 0)";
+	}
+
+	@Override
+	public String KV_READ_TYPE()
+	{
+		return "SELECT V FROM KVDB WHERE (T = ?) AND (D = 0)";
 	}
 
 	@Override

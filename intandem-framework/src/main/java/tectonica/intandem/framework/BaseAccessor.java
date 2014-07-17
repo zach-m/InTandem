@@ -6,6 +6,10 @@ public interface BaseAccessor
 {
 	public <T extends Entity> List<T> get(String id, long subIdFrom, long subIdTo, Class<T> clz);
 
+	public <T extends Entity> List<T> getAllSubs(String id, Class<T> clz);
+
+	public <T extends Entity> List<T> getAllType(String tableName, Class<T> clz);
+	
 	public <T extends Entity> void put(T entity);
 
 	public <T extends Entity> boolean replace(T entity);

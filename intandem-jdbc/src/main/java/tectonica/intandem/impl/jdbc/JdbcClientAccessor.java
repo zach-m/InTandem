@@ -84,14 +84,35 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 		return null;
 	}
 
-	private <T extends Entity> List<T> readMultiple(Connection conn, final String id, final long subIdFrom, final long subIdTo,
-			final Class<T> clz) throws SQLException
+	private <T extends Entity> List<T> readMultiple(Connection conn, String id, long subIdFrom, long subIdTo, Class<T> clz)
+			throws SQLException
 	{
-		PreparedStatement readStmt = conn.prepareStatement(KV_READ_MULTIPLE());
+		PreparedStatement readStmt = conn.prepareStatement(KV_READ_SUB_RANGE());
 		readStmt.setString(1, id);
 		readStmt.setLong(2, subIdFrom);
 		readStmt.setLong(3, subIdTo);
 		ResultSet rs = readStmt.executeQuery();
+		return strsToEntities(rs, clz);
+	}
+
+	private <T extends Entity> List<T> readMultiple(Connection conn, String id, Class<T> clz) throws SQLException
+	{
+		PreparedStatement readStmt = conn.prepareStatement(KV_READ_ALL_SUBS());
+		readStmt.setString(1, id);
+		ResultSet rs = readStmt.executeQuery();
+		return strsToEntities(rs, clz);
+	}
+
+	private <T extends Entity> List<T> readTable(Connection conn, String tableName, final Class<T> clz) throws SQLException
+	{
+		PreparedStatement readStmt = conn.prepareStatement(KV_READ_TYPE());
+		readStmt.setString(1, tableName);
+		ResultSet rs = readStmt.executeQuery();
+		return strsToEntities(rs, clz);
+	}
+
+	private <T extends Entity> List<T> strsToEntities(ResultSet rs, final Class<T> clz) throws SQLException
+	{
 		List<T> list = new ArrayList<>();
 		while (rs.next())
 			list.add(strToEntity(rs.getString(1), clz));
@@ -117,6 +138,32 @@ public abstract class JdbcClientAccessor extends JdbcBaseProvider implements Cli
 			public List<T> onConnection(Connection conn) throws SQLException
 			{
 				return readMultiple(conn, id, subIdFrom, subIdTo, clz);
+			}
+		});
+	}
+
+	@Override
+	public <T extends Entity> List<T> getAllSubs(final String id, final Class<T> clz)
+	{
+		return execute(new ConnListener<List<T>>()
+		{
+			@Override
+			public List<T> onConnection(Connection conn) throws SQLException
+			{
+				return readMultiple(conn, id, clz);
+			}
+		});
+	}
+
+	@Override
+	public <T extends Entity> List<T> getAllType(final String tableName, final Class<T> clz)
+	{
+		return execute(new ConnListener<List<T>>()
+		{
+			@Override
+			public List<T> onConnection(Connection conn) throws SQLException
+			{
+				return readTable(conn, tableName, clz);
 			}
 		});
 	}

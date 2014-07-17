@@ -1,32 +1,14 @@
 package tectonica.intandem.impl.jdbc;
 
-public interface SqlServer
+import java.util.List;
+
+public interface SqlServer extends SqlCommon
 {
-	public String KV_INIT();
-
-	public String KV_DROP();
-
-	public String KV_READ_SINGLE();
-
-	public String KV_READ_MULTIPLE();
-
-	public String KV_MERGE();
-
-	public String KV_REPLACE();
-
-	public String KV_CHECK();
-
-	public String KV_MAX();
-
 	public String KV_DELETE();
 
 	public String KV_DELETE_ALL();
 
-	public String SYNC_GET_CHANGES();
-
-	public String SYNC_INIT();
-
-	public String SYNC_DROP();
+	public List<String> SYNC_INIT();
 
 	public String SYNC_ASSOC();
 

@@ -2,6 +2,8 @@ package tectonica.intandem.impl.jdbc.h2;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
 
 import org.h2.jdbcx.JdbcConnectionPool;
 
@@ -20,10 +22,10 @@ public class H2ServerAccessor extends JdbcServerAccessor
 			@Override
 			public Void onConnection(Connection conn) throws SQLException
 			{
-				conn.createStatement().execute(KV_DROP());
-				conn.createStatement().execute(SYNC_DROP());
-				conn.createStatement().execute(KV_INIT());
-				conn.createStatement().execute(SYNC_INIT());
+				for (String stmt : KV_INIT())
+					conn.createStatement().execute(stmt);
+				for (String stmt : SYNC_INIT())
+					conn.createStatement().execute(stmt);
 				return null;
 			}
 		});
@@ -38,15 +40,12 @@ public class H2ServerAccessor extends JdbcServerAccessor
 	}
 
 	@Override
-	public String KV_INIT()
+	public List<String> KV_INIT()
 	{
-		return "CREATE TABLE KVDB (K VARCHAR2, SK BIGINT, T VARCHAR2, V VARCHAR2, UT BIGINT, D TINYINT, PRIMARY KEY(K, SK))";
-	}
-
-	@Override
-	public String KV_DROP()
-	{
-		return "DROP TABLE IF EXISTS KVDB";
+		return Arrays.asList( //
+				"DROP TABLE IF EXISTS KVDB", //
+				"CREATE TABLE KVDB (K VARCHAR2, SK BIGINT, T VARCHAR2, V VARCHAR2, UT BIGINT, D TINYINT, PRIMARY KEY(K, SK))");
+		// TODO: add index on the type-name (column T)
 	}
 
 	@Override
@@ -56,9 +55,21 @@ public class H2ServerAccessor extends JdbcServerAccessor
 	}
 
 	@Override
-	public String KV_READ_MULTIPLE()
+	public String KV_READ_SUB_RANGE()
 	{
 		return "SELECT V FROM KVDB WHERE (K = ?) AND (SK BETWEEN ? AND ?) AND (D = 0)";
+	}
+
+	@Override
+	public String KV_READ_ALL_SUBS()
+	{
+		return "SELECT V FROM KVDB WHERE (K = ?) AND (D = 0)";
+	}
+
+	@Override
+	public String KV_READ_TYPE()
+	{
+		return "SELECT V FROM KVDB WHERE (T = ?) AND (D = 0)";
 	}
 
 	@Override
@@ -98,15 +109,11 @@ public class H2ServerAccessor extends JdbcServerAccessor
 	}
 
 	@Override
-	public String SYNC_INIT()
+	public List<String> SYNC_INIT()
 	{
-		return "CREATE TABLE SYNCDB (U VARCHAR2, K VARCHAR2, SK BIGINT, SUT BIGINT, SD TINYINT, PRIMARY KEY(U, K, SK))";
-	}
-
-	@Override
-	public String SYNC_DROP()
-	{
-		return "DROP TABLE IF EXISTS SYNCDB";
+		return Arrays.asList( //
+				"DROP TABLE IF EXISTS SYNCDB", //
+				"CREATE TABLE SYNCDB (U VARCHAR2, K VARCHAR2, SK BIGINT, SUT BIGINT, SD TINYINT, PRIMARY KEY(U, K, SK))");
 	}
 
 	@Override
